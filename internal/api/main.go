@@ -18,6 +18,30 @@ import (
 func main() {
 	// Cargar configuración
 	cfg, err := config.Load()
+
+	// itunesClient := itunes.NewClient(cfg.ITunesAPIURL)
+	// chartLyricsClient := chartlyrics.NewClient(cfg.ChartLyricsAPIURL)
+
+	// musicAggregator := services.NewMusicAggregator([]services.MusicProvider{
+	// 	itunesClient,
+	// 	chartLyricsClient,
+	// })
+
+	// mongoClient, err := mongodb.NewMongoClient(context.Background(), cfg.MongoURI, cfg.MongoDB)
+	// if err != nil {
+	//     log.Fatalf("Error connecting to MongoDB: %v", err)
+	// }
+	// defer mongoClient.Close(context.Background())
+
+	// // Inicializar repositorio y servicio
+	// songRepo := mongodb.NewSongRepository(mongoClient)
+	// songService := services.NewSongService(songRepo, musicAggregator)
+
+	// // Crear índices
+	// if err := songRepo.CreateIndexes(context.Background()); err != nil {
+	//     log.Fatalf("Error creating indexes: %v", err)
+	// }
+
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
 	}

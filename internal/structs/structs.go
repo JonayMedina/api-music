@@ -44,3 +44,8 @@ type MetaData struct {
 	TotalPages  int `json:"total_pages"`
 	TotalItems  int `json:"total_items"`
 }
+
+type SearchResult struct {
+	Songs []Song   `json:"songs"`
+	Meta  MetaData `json:"meta"`
+}
