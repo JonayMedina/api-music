@@ -3,11 +3,11 @@ package mongodb
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/JonayMedina/api-music/internal/structs"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -89,10 +89,7 @@ func (r *SongRepository) SearchSongs(ctx context.Context, query string, artist s
 		}
 
 		filter["$text"] = bson.M{
-			"$search": primitive.Regex{
-				Pattern: ".*" + primitive.Quote(query) + ".*",
-				Options: "i",
-			},
+			"$search": strings.Join(searchTerms, " "), // Join search terms with space
 		}
 	}
 

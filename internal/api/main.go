@@ -10,8 +10,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JonayMedina/api-music/internal/cache/redis"
 	"github.com/JonayMedina/api-music/internal/config"
+	"github.com/JonayMedina/api-music/internal/db/mongodb"
 	"github.com/JonayMedina/api-music/internal/middleware"
+	"github.com/JonayMedina/api-music/internal/services"
+	"github.com/JonayMedina/api-music/internal/services/chartlyrics"
+	"github.com/JonayMedina/api-music/internal/services/itunes"
 	"github.com/gin-gonic/gin"
 )
 
@@ -19,28 +24,39 @@ func main() {
 	// Cargar configuración
 	cfg, err := config.Load()
 
-	// itunesClient := itunes.NewClient(cfg.ITunesAPIURL)
-	// chartLyricsClient := chartlyrics.NewClient(cfg.ChartLyricsAPIURL)
+	itunesClient := itunes.NewClient(cfg.ITunesAPIURL)
+	chartLyricsClient := chartlyrics.NewClient(cfg.ChartLyricsAPIURL)
 
-	// musicAggregator := services.NewMusicAggregator([]services.MusicProvider{
-	// 	itunesClient,
-	// 	chartLyricsClient,
-	// })
+	musicAggregator := services.NewMusicAggregator([]services.MusicProvider{
+		itunesClient,
+		chartLyricsClient,
+	})
 
-	// mongoClient, err := mongodb.NewMongoClient(context.Background(), cfg.MongoURI, cfg.MongoDB)
-	// if err != nil {
-	//     log.Fatalf("Error connecting to MongoDB: %v", err)
-	// }
-	// defer mongoClient.Close(context.Background())
+	mongoClient, err := mongodb.NewMongoClient(context.Background(), cfg.MongoURI, cfg.MongoDB)
+	if err != nil {
+	    log.Fatalf("Error connecting to MongoDB: %v", err)
+	}
+	defer mongoClient.Close(context.Background())
 
-	// // Inicializar repositorio y servicio
-	// songRepo := mongodb.NewSongRepository(mongoClient)
-	// songService := services.NewSongService(songRepo, musicAggregator)
+	// Inicializar repositorio y servicio
+	songRepo := mongodb.NewSongRepository(mongoClient)
 
-	// // Crear índices
-	// if err := songRepo.CreateIndexes(context.Background()); err != nil {
-	//     log.Fatalf("Error creating indexes: %v", err)
-	// }
+	// Crear índices
+	if err := songRepo.CreateIndexes(context.Background()); err != nil {
+	    log.Fatalf("Error creating indexes: %v", err)
+	}
+
+	redisClient, err := redis.NewRedisClient(cfg.RedisURI)
+    if err != nil {
+        log.Fatalf("Error connecting to Redis: %v", err)
+    }
+    defer redisClient.Close()
+
+    // Inicializar servicio de caché
+    cacheService := redis.NewCacheService(redisClient)
+
+    // Actualizar inicialización del servicio de canciones
+    songService := services.NewSongService(songRepo, cacheService, musicAggregator)
 
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
