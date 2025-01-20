@@ -1,4 +1,3 @@
-// cmd/api/main.go
 package main
 
 import (
@@ -24,6 +23,8 @@ func main() {
 	// Cargar configuración
 	cfg, err := config.Load()
 
+	// mysqlDB, err := mysql.InitDB(cfg)
+
 	itunesClient := itunes.NewClient(cfg.ITunesAPIURL)
 	chartLyricsClient := chartlyrics.NewClient(cfg.ChartLyricsAPIURL)
 
@@ -34,7 +35,7 @@ func main() {
 
 	mongoClient, err := mongodb.NewMongoClient(context.Background(), cfg.MongoURI, cfg.MongoDB)
 	if err != nil {
-	    log.Fatalf("Error connecting to MongoDB: %v", err)
+		log.Fatalf("Error connecting to MongoDB: %v", err)
 	}
 	defer mongoClient.Close(context.Background())
 
@@ -43,20 +44,20 @@ func main() {
 
 	// Crear índices
 	if err := songRepo.CreateIndexes(context.Background()); err != nil {
-	    log.Fatalf("Error creating indexes: %v", err)
+		log.Fatalf("Error creating indexes: %v", err)
 	}
 
 	redisClient, err := redis.NewRedisClient(cfg.RedisURI)
-    if err != nil {
-        log.Fatalf("Error connecting to Redis: %v", err)
-    }
-    defer redisClient.Close()
+	if err != nil {
+		log.Fatalf("Error connecting to Redis: %v", err)
+	}
+	defer redisClient.Close()
 
-    // Inicializar servicio de caché
-    cacheService := redis.NewCacheService(redisClient)
+	// Inicializar servicio de caché
+	cacheService := redis.NewCacheService(redisClient)
 
-    // Actualizar inicialización del servicio de canciones
-    songService := services.NewSongService(songRepo, cacheService, musicAggregator)
+	// Actualizar inicialización del servicio de canciones
+	songService := services.NewSongService(songRepo, cacheService, musicAggregator)
 
 	if err != nil {
 		log.Fatalf("Error loading config: %v", err)
