@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/JonayMedina/api-music/internal/structs"
+	dbStructs "github.com/JonayMedina/api-music-db/database/structs"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -52,32 +52,25 @@ func (r *SongRepository) CreateIndexes(ctx context.Context) error {
 }
 
 // SaveSongs guarda un conjunto de canciones en la base de datos
-func (r *SongRepository) SaveSongs(ctx context.Context, songs []structs.Song) error {
+func (r *SongRepository) SaveSongs(ctx context.Context, songs []*dbStructs.Song) error {
 	if len(songs) == 0 {
 		return nil
 	}
 
-	now := time.Now().Unix()
 	documents := make([]interface{}, len(songs))
-
 	for i, song := range songs {
-		song.CreatedAt = now
-		song.UpdatedAt = now
 		documents[i] = song
 	}
 
-	opts := options.InsertMany().SetOrdered(false)
-	_, err := r.coll.InsertMany(ctx, documents, opts)
+	_, err := r.coll.InsertMany(ctx, documents)
 	return err
 }
 
 // SearchSongs busca canciones según los criterios especificados
-func (r *SongRepository) SearchSongs(ctx context.Context, query string, artist string, album string, page int, limit int) ([]structs.Song, int64, error) {
+func (r *SongRepository) SearchSongs(ctx context.Context, query, artist, album string, page, limit int) ([]dbStructs.Song, int64, error) {
 	filter := bson.M{}
-
-	// Construir filtro de búsqueda
 	if query != "" || artist != "" || album != "" {
-		searchTerms := []string{}
+		var searchTerms []string
 		if query != "" {
 			searchTerms = append(searchTerms, query)
 		}
@@ -87,34 +80,29 @@ func (r *SongRepository) SearchSongs(ctx context.Context, query string, artist s
 		if album != "" {
 			searchTerms = append(searchTerms, album)
 		}
-
 		filter["$text"] = bson.M{
-			"$search": strings.Join(searchTerms, " "), // Join search terms with space
+			"$search": strings.Join(searchTerms, " "),
 		}
 	}
 
-	// Opciones de paginación
 	skip := (page - 1) * limit
 	findOptions := options.Find().
 		SetSort(bson.D{{Key: "created_at", Value: -1}}).
 		SetSkip(int64(skip)).
 		SetLimit(int64(limit))
 
-	// Ejecutar búsqueda
 	cursor, err := r.coll.Find(ctx, filter, findOptions)
 	if err != nil {
 		return nil, 0, err
 	}
 	defer cursor.Close(ctx)
 
-	// Obtener total de documentos
 	total, err := r.coll.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	// Decodificar resultados
-	var songs []structs.Song
+	var songs []dbStructs.Song
 	if err = cursor.All(ctx, &songs); err != nil {
 		return nil, 0, err
 	}
@@ -123,8 +111,8 @@ func (r *SongRepository) SearchSongs(ctx context.Context, query string, artist s
 }
 
 // GetSongByID obtiene una canción por su ID
-func (r *SongRepository) GetSongByID(ctx context.Context, id string) (*structs.Song, error) {
-	var song structs.Song
+func (r *SongRepository) GetSongByID(ctx context.Context, id string) (*dbStructs.Song, error) {
+	var song dbStructs.Song
 	err := r.coll.FindOne(ctx, bson.M{"_id": id}).Decode(&song)
 	if err == mongo.ErrNoDocuments {
 		return nil, nil
@@ -145,4 +133,8 @@ func (r *SongRepository) DeleteOldSongs(ctx context.Context, before time.Time) e
 
 	_, err := r.coll.DeleteMany(ctx, filter)
 	return err
+}
+
+func getNowDateTime() string {
+	return time.Now().Format("2006-01-02 15:04:05")
 }

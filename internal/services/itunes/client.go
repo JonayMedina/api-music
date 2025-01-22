@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"time"
 
+	"github.com/JonayMedina/api-music-db/database/structs"
 	"github.com/JonayMedina/api-music/internal/services"
-	"github.com/JonayMedina/api-music/internal/structs"
 )
 
 type Client struct {
@@ -31,7 +30,9 @@ type iTunesTrack struct {
 	TrackTimeMillis int     `json:"trackTimeMillis"`
 	ArtworkUrl100   string  `json:"artworkUrl100"`
 	TrackPrice      float64 `json:"trackPrice"`
-	Currency        string  `json:"currency"`
+	Currency        string  `json:"currency,omitempty"`
+	Genre           string  `json:"primaryGenreName,omitempty"`
+	ReleaseDate     string  `json:"releaseDate,omitempty"`
 }
 
 func NewClient(baseURL string) *Client {
@@ -47,7 +48,7 @@ func (c *Client) Name() string {
 	return "itunes"
 }
 
-func (c *Client) Search(ctx context.Context, query, artist, album string) ([]structs.Song, error) {
+func (c *Client) Search(ctx context.Context, query, artist, album string) ([]*structs.Song, error) {
 	// Construir query
 	searchQuery := query
 	if artist != "" {
@@ -89,20 +90,23 @@ func (c *Client) Search(ctx context.Context, query, artist, album string) ([]str
 	}
 
 	// Convertir resultados
-	songs := make([]structs.Song, 0, len(iTunesResp.Results))
-	for _, track := range iTunesResp.Results {
-		songs = append(songs, structs.Song{
-			ID:       strconv.Itoa(track.TrackID),
-			Name:     track.TrackName,
-			Artist:   track.ArtistName,
-			Duration: formatDuration(track.TrackTimeMillis),
-			Album:    track.CollectionName,
-			Artwork:  track.ArtworkUrl100,
-			Price:    formatPrice(track.TrackPrice, track.Currency),
-			Origin:   "apple",
-		})
-	}
+	songs := make([]*structs.Song, 0, len(iTunesResp.Results))
 
+	for _, track := range iTunesResp.Results {
+		song := &structs.Song{
+
+			Title:       track.TrackName,
+			Duration:    track.TrackTimeMillis,
+			Album:       track.CollectionName,
+			Genre:       track.Genre,
+			ReleaseDate: track.ReleaseDate,
+			CoverImage:  track.ArtworkUrl100,
+			Price:       formatPrice(track.TrackPrice, track.Currency),
+			Origin:      "iTunes",
+		}
+
+		songs = append(songs, song)
+	}
 	return songs, nil
 }
 

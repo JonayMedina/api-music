@@ -2,11 +2,12 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/JonayMedina/api-music/internal/config"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type MongoClient struct {
@@ -14,41 +15,29 @@ type MongoClient struct {
 	db     *mongo.Database
 }
 
-func NewMongoClient(ctx context.Context, uri, dbName string) (*MongoClient, error) {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+func InitDB(cfg *config.Config) (*MongoClient, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Crear opciones del cliente
-	clientOptions := options.Client().
-		ApplyURI(uri).
-		SetServerAPIOptions(options.ServerAPI(options.ServerAPIVersion1)).
-		SetTimeout(5 * time.Second)
-
-	// Conectar al cliente
-	client, err := mongo.Connect(ctx, clientOptions)
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(cfg.MongoURI))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error conectando a MongoDB: %v", err)
 	}
 
-	// Verificar conexión
-	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		return nil, err
+	if err := client.Ping(ctx, nil); err != nil {
+		return nil, fmt.Errorf("error verificando conexión MongoDB: %v", err)
 	}
 
 	return &MongoClient{
 		client: client,
-		db:     client.Database(dbName),
+		db:     client.Database(cfg.MongoDB),
 	}, nil
 }
 
-func (mc *MongoClient) Close(ctx context.Context) error {
-	return mc.client.Disconnect(ctx)
+func (m *MongoClient) Close() error {
+	return m.client.Disconnect(context.Background())
 }
 
-func (mc *MongoClient) Database() *mongo.Database {
-	return mc.db
-}
-
-func (mc *MongoClient) Collection(name string) *mongo.Collection {
-	return mc.db.Collection(name)
+func (m *MongoClient) Collection(name string) *mongo.Collection {
+	return m.db.Collection(name)
 }

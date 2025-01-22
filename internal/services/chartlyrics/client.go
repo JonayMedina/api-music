@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"time"
 
+	dbStructs "github.com/JonayMedina/api-music-db/database/structs"
 	"github.com/JonayMedina/api-music/internal/services"
-	"github.com/JonayMedina/api-music/internal/structs"
 )
 
 type Client struct {
@@ -42,7 +42,7 @@ func (c *Client) Name() string {
 	return "chartlyrics"
 }
 
-func (c *Client) Search(ctx context.Context, query, artist, album string) ([]structs.Song, error) {
+func (c *Client) Search(ctx context.Context, query, artist, album string) ([]*dbStructs.Song, error) {
 	// Construir URL
 	params := url.Values{}
 	if artist != "" {
@@ -78,17 +78,15 @@ func (c *Client) Search(ctx context.Context, query, artist, album string) ([]str
 	}
 
 	// Convertir resultados
-	songs := make([]structs.Song, 0, len(searchResp.Result))
+	songs := make([]*dbStructs.Song, 0, len(searchResp.Result))
 	for _, result := range searchResp.Result {
-		songs = append(songs, structs.Song{
-			ID:       fmt.Sprintf("CL%d", result.LyricID),
-			Name:     result.SongName,
-			Artist:   result.ArtistName,
-			Duration: result.TrackLength,
-			Album:    result.AlbumName,
-			Artwork:  "",    // ChartLyrics no proporciona artwork
-			Price:    "N/A", // ChartLyrics no proporciona precios
-			Origin:   "chartlyrics",
+		songs = append(songs, &dbStructs.Song{
+			Title:       result.SongName,
+			Album:       result.AlbumName,
+			Genre:       "",
+			ReleaseDate: "",
+			CoverImage:  "",
+			Origin:      "chartlyrics",
 		})
 	}
 

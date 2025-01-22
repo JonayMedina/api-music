@@ -1,17 +1,8 @@
 package structs
 
-type Song struct {
-	ID        string `json:"id" bson:"_id,omitempty"`
-	Name      string `json:"name" bson:"name"`
-	Artist    string `json:"artist" bson:"artist"`
-	Duration  string `json:"duration" bson:"duration"`
-	Album     string `json:"album" bson:"album"`
-	Artwork   string `json:"artwork" bson:"artwork"`
-	Price     string `json:"price" bson:"price"`
-	Origin    string `json:"origin" bson:"origin"`
-	CreatedAt int64  `json:"created_at" bson:"created_at"`
-	UpdatedAt int64  `json:"updated_at" bson:"updated_at"`
-}
+import (
+	"github.com/JonayMedina/api-music-db/database/structs"
+)
 
 // SearchRequest representa la estructura de búsqueda
 type SearchRequest struct {
@@ -46,6 +37,6 @@ type MetaData struct {
 }
 
 type SearchResult struct {
-	Songs []Song   `json:"songs"`
-	Meta  MetaData `json:"meta"`
+	Songs []*structs.Song `json:"songs"`
+	Meta  MetaData        `json:"meta"`
 }

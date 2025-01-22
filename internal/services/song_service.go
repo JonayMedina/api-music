@@ -2,19 +2,22 @@ package services
 
 import (
 	"context"
+	"log"
+	"strconv"
 
+	dbStructs "github.com/JonayMedina/api-music-db/database/structs"
 	"github.com/JonayMedina/api-music/internal/cache/redis"
-	"github.com/JonayMedina/api-music/internal/db/mongodb"
+	"github.com/JonayMedina/api-music/internal/db"
 	"github.com/JonayMedina/api-music/internal/structs"
 )
 
 type SongService struct {
-	repo       *mongodb.SongRepository
+	repo       *db.Repository
 	cache      *redis.CacheService
 	aggregator *MusicAggregator
 }
 
-func NewSongService(repo *mongodb.SongRepository, cache *redis.CacheService, aggregator *MusicAggregator) *SongService {
+func NewSongService(repo *db.Repository, cache *redis.CacheService, aggregator *MusicAggregator) *SongService {
 	return &SongService{
 		repo:       repo,
 		cache:      cache,
@@ -29,31 +32,21 @@ func (s *SongService) SearchSongs(ctx context.Context, query, artist, album stri
 		return cachedResult, nil
 	}
 
-	// Buscar en la base de datos local
+	// Primero buscar en las bases de datos locales
 	songs, total, err := s.repo.SearchSongs(ctx, query, artist, album, page, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	// Si no hay suficientes resultados, buscar en servicios externos
 	if len(songs) < limit {
 		externalSongs, err := s.aggregator.SearchAll(ctx, query, artist, album)
-		if err == nil {
-			// Guardar nuevos resultados en base de datos
+		if err == nil && len(externalSongs) > 0 {
+
 			if err := s.repo.SaveSongs(ctx, externalSongs); err != nil {
-				// logger.Error("Error saving songs", err)
-			}
 
-			// Actualizar búsqueda local
-			songs, total, err = s.repo.SearchSongs(ctx, query, artist, album, page, limit)
-			if err != nil {
-				return nil, err
+				log.Printf("Error guardando canciones externas: %v", err)
 			}
-
-			// Invalidar caché de búsquedas debido a nuevos resultados
-			if err := s.cache.InvalidateSearches(ctx); err != nil {
-				// logger.Error("Error invalidating cache", err)
-			}
+			songs = append(songs, externalSongs...)
 		}
 	}
 
@@ -77,14 +70,14 @@ func (s *SongService) SearchSongs(ctx context.Context, query, artist, album stri
 }
 
 // GetSongByID obtiene una canción por ID con soporte de caché
-func (s *SongService) GetSongByID(ctx context.Context, id string) (*structs.Song, error) {
+func (s *SongService) GetSongByID(ctx context.Context, id int) (*dbStructs.Song, error) {
 	// Intentar obtener del caché
-	if cachedSong, err := s.cache.GetSong(ctx, id); err == nil && cachedSong != nil {
+	if cachedSong, err := s.cache.GetSong(ctx, strconv.Itoa(id)); err == nil && cachedSong != nil {
 		return cachedSong, nil
 	}
 
 	// Obtener de la base de datos
-	song, err := s.repo.GetSongByID(ctx, id)
+	song, err := s.repo.GetSong(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -92,9 +85,13 @@ func (s *SongService) GetSongByID(ctx context.Context, id string) (*structs.Song
 	// Guardar en caché
 	if song != nil {
 		if err := s.cache.SetSong(ctx, song); err != nil {
-			// logger.Error("Error caching song", err)
+			log.Println("Error caching song", err)
 		}
 	}
 
 	return song, nil
+}
+
+func (s *SongService) SaveSong(ctx context.Context, song *dbStructs.Song) error {
+	return s.repo.SaveSongs(ctx, []*dbStructs.Song{song})
 }

@@ -3,12 +3,12 @@ package services
 import (
 	"context"
 
-	"github.com/JonayMedina/api-music/internal/structs"
+	"github.com/JonayMedina/api-music-db/database/structs"
 )
 
 // MusicProvider define la interfaz que todos los servicios de música deben implementar
 type MusicProvider interface {
-	Search(ctx context.Context, query string, artist string, album string) ([]structs.Song, error)
+	Search(ctx context.Context, query string, artist string, album string) ([]*structs.Song, error)
 	Name() string
 }
 

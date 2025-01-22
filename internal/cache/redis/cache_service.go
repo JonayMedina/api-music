@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"time"
 
+	dbStructs "github.com/JonayMedina/api-music-db/database/structs"
 	"github.com/JonayMedina/api-music/internal/structs"
 	"github.com/go-redis/redis"
 )
@@ -26,9 +28,19 @@ type CacheService struct {
 }
 
 func NewCacheService(client *RedisClient) *CacheService {
-	return &CacheService{
-		client: client,
-	}
+	return &CacheService{client: client}
+}
+
+func (cs *CacheService) Get(ctx context.Context, key string, dest interface{}) error {
+	return cs.client.Get(ctx, key, dest)
+}
+
+func (cs *CacheService) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	return cs.client.Set(ctx, key, value, expiration)
+}
+
+func (cs *CacheService) Close() error {
+	return cs.client.Close()
 }
 
 // generateSearchKey genera una clave única para una búsqueda
@@ -64,10 +76,10 @@ func (cs *CacheService) SetSearchResults(ctx context.Context, query, artist, alb
 }
 
 // GetSong obtiene una canción del caché
-func (cs *CacheService) GetSong(ctx context.Context, id string) (*structs.Song, error) {
+func (cs *CacheService) GetSong(ctx context.Context, id string) (*dbStructs.Song, error) {
 	key := songPrefix + id
 
-	var song structs.Song
+	var song *dbStructs.Song
 	err := cs.client.Get(ctx, key, &song)
 	if err == redis.Nil {
 		return nil, nil
@@ -76,12 +88,12 @@ func (cs *CacheService) GetSong(ctx context.Context, id string) (*structs.Song, 
 		return nil, err
 	}
 
-	return &song, nil
+	return song, nil
 }
 
 // SetSong guarda una canción en el caché
-func (cs *CacheService) SetSong(ctx context.Context, song *structs.Song) error {
-	key := songPrefix + song.ID
+func (cs *CacheService) SetSong(ctx context.Context, song *dbStructs.Song) error {
+	key := songPrefix + strconv.Itoa(song.ID)
 	return cs.client.Set(ctx, key, song, songExpiration)
 }
 

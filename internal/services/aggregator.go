@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/JonayMedina/api-music/internal/structs"
+	"github.com/JonayMedina/api-music-db/database/structs"
 )
 
 type MusicAggregator struct {
@@ -18,13 +18,13 @@ func NewMusicAggregator(providers []MusicProvider) *MusicAggregator {
 	}
 }
 
-func (ma *MusicAggregator) SearchAll(ctx context.Context, query, artist, album string) ([]structs.Song, error) {
+func (ma *MusicAggregator) SearchAll(ctx context.Context, query, artist, album string) ([]*structs.Song, error) {
 	var (
 		wg        sync.WaitGroup
 		mu        sync.Mutex
-		allSongs  []structs.Song
+		allSongs  []*structs.Song
 		errChan   = make(chan error, len(ma.providers))
-		songsChan = make(chan []structs.Song, len(ma.providers))
+		songsChan = make(chan []*structs.Song, len(ma.providers))
 	)
 
 	// Lanzar búsquedas en paralelo
@@ -64,7 +64,7 @@ func (ma *MusicAggregator) SearchAll(ctx context.Context, query, artist, album s
 
 	// Ordenar resultados por nombre
 	sort.Slice(allSongs, func(i, j int) bool {
-		return allSongs[i].Name < allSongs[j].Name
+		return allSongs[i].Title < allSongs[j].Title
 	})
 
 	return allSongs, nil
